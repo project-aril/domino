@@ -103,7 +103,7 @@
   <div id="printArea" class="hidden"></div>
 
   <!-- ============ ADMIN VIEW ============ -->
-  <section id="view-admin" class="hidden fade-in">
+  <section id="view-admin" class="hidden fade-in pt-4">
 
     <!-- Login -->
     <div id="adminLoginBox" class="max-w-sm mx-auto glass rounded-2xl p-6 mt-6">
@@ -116,7 +116,7 @@
 
     <!-- Dashboard -->
     <div id="adminDashboard" class="hidden">
-      <div class="flex gap-2 overflow-x-auto mb-4">
+      <div class="flex gap-2 overflow-x-auto mb-4 pt-2 border-t border-slate-800">
         <button data-atab="teams" class="atab-btn px-3 py-2 rounded-lg bg-slate-800 text-xs whitespace-nowrap">Tim</button>
         <button data-atab="pools" class="atab-btn px-3 py-2 rounded-lg bg-slate-800 text-xs whitespace-nowrap">Pool & Jadwal</button>
         <button data-atab="knockout" class="atab-btn px-3 py-2 rounded-lg bg-slate-800 text-xs whitespace-nowrap">Knockout</button>
@@ -151,10 +151,14 @@
       <div id="atab-pools" class="admin-panel hidden space-y-4">
         <div class="glass rounded-xl p-4">
           <h3 class="font-semibold mb-2 text-sm">Buat Pool & Jadwal Penyisihan</h3>
-          <p class="text-xs text-slate-400 mb-2">Tim akan diacak & dibagi ke dalam pool berisi 6 tim (3 ronde, tanpa lawan yang sama).</p>
+          <p class="text-xs text-slate-400 mb-2">Tim akan diacak & dibagi rata ke beberapa pool. Setiap tim bertanding melawan tiap anggota pool lainnya secara round-robin, tanpa lawan yang sama.</p>
+          <label class="text-xs text-slate-400 block mb-1">Jumlah Tim per Pool</label>
+          <input id="poolSizeInput" type="number" min="2" max="10" value="4" class="w-24 mb-3 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm">
+          <br>
           <button id="generatePoolsBtn" class="bg-amber-500 text-slate-900 font-bold text-xs px-3 py-2 rounded-lg">
             <i class="fa-solid fa-shuffle mr-1"></i>Generate Pool & Jadwal
           </button>
+          <div id="poolResultArea" class="mt-4 text-sm"></div>
         </div>
       </div>
 
@@ -166,6 +170,7 @@
           <button id="generateKnockoutBtn" class="bg-amber-500 text-slate-900 font-bold text-xs px-3 py-2 rounded-lg">
             <i class="fa-solid fa-sitemap mr-1"></i>Generate Bagan Knockout
           </button>
+          <div id="knockoutResultArea" class="mt-4 text-sm"></div>
         </div>
       </div>
 
@@ -197,8 +202,7 @@
       <h3 class="font-bold"><i class="fa-solid fa-key mr-2"></i>Buka Papan Skor</h3>
       <button class="closeModal text-slate-400" data-target="modalOpenBoard"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <p class="text-xs text-slate-400 mb-3">Masukkan PIN 4-digit salah satu tim yang bertanding di meja ini.</p>
-    <input id="matchIdInput" placeholder="ID Pertandingan (mis. M_abc123)" class="w-full mb-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm">
+    <p class="text-xs text-slate-400 mb-3">Masukkan PIN 4-digit tim Anda. Sistem otomatis menemukan pertandingan Anda yang sedang aktif.</p>
     <input id="openPinInput" maxlength="4" inputmode="numeric" placeholder="PIN 4 Digit" class="w-full mb-3 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-center text-xl tracking-[0.5em]">
     <button id="openBoardSubmitBtn" class="w-full bg-amber-500 text-slate-900 font-bold py-2 rounded-lg">Buka Papan Skor</button>
     <p id="openBoardError" class="text-red-400 text-xs mt-2 text-center hidden"></p>
@@ -417,10 +421,15 @@ function previewApi(fnName, args){
       DUMMY.teams = []; DUMMY.matches = [];
       return {success:true, message:'Data direset (preview)'};
     }
-    case 'generatePools':
-      return {success:true, message:'(Preview) gunakan data simulasi yang sudah tersedia.'};
+    case 'generatePools': {
+      const poolSize = args[0] || 4;
+      const poolCount = Math.max(1, Math.ceil(DUMMY.teams.length / poolSize));
+      const pools = Array.from({length:poolCount}, ()=>[]);
+      DUMMY.teams.forEach((t,i)=> pools[i % poolCount].push(t.team_name));
+      return {success:true, pools, message:'(Preview) Pool & jadwal disimulasikan — data pertandingan asli tetap memakai contoh Grup A/B di atas.'};
+    }
     case 'generateKnockout':
-      return {success:true, message:'(Preview) bagan knockout simulasi sudah tersedia.'};
+      return {success:true, message:'(Preview) Bagan knockout disimulasikan.', total_match: 2};
     case 'getTeamDirectory':
       return DUMMY.teams.map(t=>({team_id:t.team_id, team_name:t.team_name, pin:t.pin, pool_id:t.pool_id}));
     case 'openBoard': {
@@ -432,6 +441,20 @@ function previewApi(fnName, args){
       if(!t1 || !t2) return {success:false, message:'Data tim tidak lengkap untuk pertandingan ini.'};
       if(String(pin)!==String(t1.pin) && String(pin)!==String(t2.pin)) return {success:false, message:'PIN salah.'};
       if(match.status==='Selesai') return {success:false, message:'Skor Terkunci.', locked:true};
+      return {success:true, match, team1:t1, team2:t2};
+    }
+    case 'openBoardByPin': {
+      const [pin] = args;
+      const team = DUMMY.teams.find(t=>String(t.pin)===String(pin));
+      if(!team) return {success:false, message:'PIN tidak ditemukan. Periksa kembali PIN Anda.'};
+      const candidates = DUMMY.matches.filter(m=>
+        (m.team1_id===team.team_id || m.team2_id===team.team_id) &&
+        m.status!=='Selesai' && m.team1_id && m.team2_id
+      ).sort((a,b)=>a.table_no-b.table_no);
+      if(candidates.length===0) return {success:false, message:'Tidak ada pertandingan aktif untuk tim ini saat ini.'};
+      const match = candidates[0];
+      const t1 = DUMMY.teams.find(t=>t.team_id===match.team1_id);
+      const t2 = DUMMY.teams.find(t=>t.team_id===match.team2_id);
       return {success:true, match, team1:t1, team2:t2};
     }
     case 'updateScore': {
@@ -648,6 +671,17 @@ document.getElementById('logoutBtn').addEventListener('click', ()=>{
   document.getElementById('adminLoginBox').classList.remove('hidden');
   document.getElementById('adminDashboard').classList.add('hidden');
   document.getElementById('adminNavLabel').textContent = 'Admin';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+
+  // Kembali ke halaman publik (Klasemen), bukan ke form login
+  document.getElementById('view-admin').classList.add('hidden');
+  document.getElementById('publicTabs').classList.remove('hidden');
+  ['standings','bracket','schedule'].forEach(v=>document.getElementById('view-'+v).classList.add('hidden'));
+  document.getElementById('view-standings').classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('tab-active'));
+  document.querySelector('.tab-btn[data-tab="standings"]').classList.add('tab-active');
+  toast('Anda telah keluar dari mode Admin');
 });
 
 document.querySelectorAll('.atab-btn').forEach(btn=>{
@@ -705,15 +739,47 @@ document.getElementById('bulkAddBtn').addEventListener('click', async ()=>{
    10. ADMIN: POOL & KNOCKOUT
    ===================================================================== */
 document.getElementById('generatePoolsBtn').addEventListener('click', async ()=>{
-  const res = await gsRun('generatePools', 6);
+  const poolSize = parseInt(document.getElementById('poolSizeInput').value, 10) || 4;
+  const res = await gsRun('generatePools', poolSize);
   toast(res.message || 'Pool dibuat');
+  renderPoolResult(res);
   loadPublicData();
 });
+
+function renderPoolResult(res){
+  const el = document.getElementById('poolResultArea');
+  if(!res.success){
+    el.innerHTML = `<p class="text-red-400 text-xs">${res.message}</p>`;
+    return;
+  }
+  el.innerHTML = `
+    <p class="text-emerald-400 text-xs mb-2"><i class="fa-solid fa-circle-check mr-1"></i>${res.message}</p>
+    <div class="grid gap-2 sm:grid-cols-2">
+      ${res.pools.map((p,i)=>`
+        <div class="bg-slate-800/60 rounded-lg p-3">
+          <p class="text-xs font-bold text-amber-400 mb-1">Grup ${String.fromCharCode(65+i)} (${p.length} tim)</p>
+          <p class="text-xs text-slate-300">${p.join(', ')}</p>
+        </div>`).join('')}
+    </div>`;
+}
+
 document.getElementById('generateKnockoutBtn').addEventListener('click', async ()=>{
   const res = await gsRun('generateKnockout');
   toast(res.message || 'Knockout dibuat');
+  renderKnockoutResult(res);
   loadPublicData();
 });
+
+function renderKnockoutResult(res){
+  const el = document.getElementById('knockoutResultArea');
+  if(!res.success){
+    el.innerHTML = `<p class="text-red-400 text-xs">${res.message}</p>`;
+    return;
+  }
+  el.innerHTML = `<p class="text-emerald-400 text-xs"><i class="fa-solid fa-circle-check mr-1"></i>${res.message}
+    ${res.total_match ? '('+res.total_match+' pertandingan babak pertama)' : ''}
+    Lihat detail lengkap di tab <b>Bagan Knockout</b> pada halaman publik.</p>`;
+}
 
 /* =====================================================================
    11. ADMIN: DIREKTORI PIN
@@ -744,11 +810,10 @@ document.getElementById('resetDbBtn').addEventListener('click', async ()=>{
 document.getElementById('openBoardTabBtn').addEventListener('click', ()=>openModal('modalOpenBoard'));
 
 document.getElementById('openBoardSubmitBtn').addEventListener('click', async ()=>{
-  const matchId = document.getElementById('matchIdInput').value.trim();
   const pin = document.getElementById('openPinInput').value.trim();
   const errEl = document.getElementById('openBoardError');
   try{
-    const res = await gsRun('openBoard', matchId, pin);
+    const res = await gsRun('openBoardByPin', pin);
     if(!res.success){ errEl.textContent = res.message; errEl.classList.remove('hidden'); return; }
     errEl.classList.add('hidden');
     STATE.currentBoard = res;
@@ -800,7 +865,14 @@ document.getElementById('confirmDualPinBtn').addEventListener('click', async ()=
    ===================================================================== */
 document.getElementById('exportPdfBtn').addEventListener('click', ()=>{
   renderPrintArea();
+  // "hidden" Tailwind = display:none, yang TIDAK bisa ditimpa oleh
+  // visibility:visible di CSS @media print. Karena itu class-nya harus
+  // dilepas dulu sebelum window.print() dipanggil.
+  document.getElementById('printArea').classList.remove('hidden');
   window.print();
+});
+window.addEventListener('afterprint', ()=>{
+  document.getElementById('printArea').classList.add('hidden');
 });
 
 /* =====================================================================
