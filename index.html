@@ -1,1148 +1,864 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aplikasi Turnamen Domino PWA</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Turnamen Domino</title>
+<meta name="theme-color" content="#0f172a">
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#f0fdf4',
-                            100: '#dcfce7',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                            900: '#14532d',
-                        },
-                        gold: {
-                            400: '#fbbf24',
-                            500: '#f59e0b',
-                            600: '#d97706',
-                        },
-                        darkbg: '#0f172a',
-                        cardbg: '#1e293b'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-        }
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        @media print {
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            body { background: white !important; color: black !important; }
-            .bg-cardbg { background: white !important; border: 1px solid #ccc !important; color: black !important; }
-            .text-white, .text-gray-300, .text-gray-400 { color: black !important; }
-        }
-    </style>
+<style>
+  :root{ --bg:#0f172a; --card:#1e293b; --accent:#f59e0b; --accent2:#10b981; }
+  *{ font-family:'Inter',sans-serif; }
+  body{ background:radial-gradient(circle at top,#1e293b,#0f172a 60%); }
+  .glass{ background:rgba(30,41,59,.7); backdrop-filter:blur(10px); border:1px solid rgba(148,163,184,.15); }
+  .tile{ background:linear-gradient(145deg,#1e293b,#111827); }
+  ::-webkit-scrollbar{ width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb{ background:#475569; border-radius:4px; }
+  .score-btn{ transition:.15s; }
+  .score-btn:active{ transform:scale(.9); }
+  .locked-cursor{ cursor:not-allowed !important; }
+  @media print{
+    body *{ visibility:hidden; }
+    #printArea, #printArea *{ visibility:visible; }
+    #printArea{ position:absolute; left:0; top:0; width:100%; color:#000 !important; background:#fff !important; }
+  }
+  .fade-in{ animation:fadein .25s ease; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+  .tab-active{ background:var(--accent); color:#0f172a; font-weight:700; }
+</style>
 </head>
-<body class="bg-darkbg text-slate-100 min-h-screen flex flex-col justify-between pb-20 md:pb-0">
+<body class="min-h-screen text-slate-100 pb-24">
 
-    <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 no-print">
-        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="bg-emerald-600 text-white p-2 rounded-xl shadow-lg shadow-emerald-900/40">
-                    <i class="fa-solid font-bold fa-dice-five text-2xl"></i>
-                </div>
-                <div>
-                    <h1 class="font-extrabold text-lg tracking-tight text-white leading-none">DOMINO CHAMP</h1>
-                    <span class="text-xs text-amber-400 font-medium tracking-wide">PWA & Digital Boardscore</span>
-                </div>
-            </div>
-            
-            <div class="flex items-center gap-2">
-                <span id="previewBadge" class="hidden text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-semibold">
-                    MODE PREVIEW
-                </span>
-                <button id="authBtn" onclick="toggleAuthModal()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 font-medium">
-                    <i class="fa-solid fa-lock text-amber-400"></i>
-                    <span id="authBtnText">Login Admin</span>
-                </button>
-            </div>
-        </div>
-    </header>
+<!-- ================= NAVBAR ================= -->
+<header class="sticky top-0 z-40 glass px-4 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-2">
+    <div class="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center text-slate-900 font-black text-lg">D</div>
+    <div>
+      <h1 class="font-extrabold text-base leading-none" id="tournamentTitle">Turnamen Domino</h1>
+      <p class="text-[10px] text-slate-400" id="modeLabel">Mode Preview</p>
+    </div>
+  </div>
+  <div class="flex items-center gap-2">
+    <button id="installBtn" class="hidden text-xs bg-emerald-500 text-slate-900 font-bold px-3 py-2 rounded-lg">
+      <i class="fa-solid fa-download mr-1"></i>Install Aplikasi Domino
+    </button>
+    <button id="adminNavBtn" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg font-semibold">
+      <i class="fa-solid fa-user-shield mr-1"></i><span id="adminNavLabel">Admin</span>
+    </button>
+  </div>
+</header>
 
-    <div id="pwaInstallBanner" class="hidden fixed top-16 left-4 right-4 z-40 bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-3 rounded-2xl shadow-2xl border border-emerald-400/30 no-print">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <i class="fa-solid fa-mobile-screen-button text-2xl"></i>
-                <div>
-                    <p class="font-bold text-sm">Install Aplikasi Domino</p>
-                    <p class="text-xs text-emerald-100">Akses cepat & catat skor offline</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-2">
-                <button onclick="installPWA()" class="bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold px-3 py-1.5 text-xs rounded-xl shadow transition">
-                    Install
-                </button>
-                <button onclick="dismissPWA()" class="text-emerald-200 hover:text-white p-1">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-        </div>
+<!-- ================= TAB BAR (PUBLIC) ================= -->
+<nav class="flex gap-2 px-4 py-3 overflow-x-auto" id="publicTabs">
+  <button data-tab="standings" class="tab-btn px-4 py-2 rounded-full bg-slate-800 text-sm whitespace-nowrap">
+    <i class="fa-solid fa-ranking-star mr-1"></i>Klasemen
+  </button>
+  <button data-tab="bracket" class="tab-btn px-4 py-2 rounded-full bg-slate-800 text-sm whitespace-nowrap">
+    <i class="fa-solid fa-trophy mr-1"></i>Bagan Knockout
+  </button>
+  <button data-tab="schedule" class="tab-btn px-4 py-2 rounded-full bg-slate-800 text-sm whitespace-nowrap">
+    <i class="fa-solid fa-calendar-days mr-1"></i>Jadwal & Meja
+  </button>
+  <button id="openBoardTabBtn" class="ml-auto px-4 py-2 rounded-full bg-amber-500 text-slate-900 text-sm font-bold whitespace-nowrap">
+    <i class="fa-solid fa-table-tennis-paddle-ball mr-1"></i>Buka Papan Skor
+  </button>
+</nav>
+
+<main class="px-4 max-w-5xl mx-auto">
+
+  <!-- Champion banner -->
+  <div id="championBanner" class="hidden fade-in mb-4 rounded-2xl p-6 text-center bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-slate-900 shadow-xl">
+    <i class="fa-solid fa-crown text-4xl mb-2"></i>
+    <p class="text-xs font-bold uppercase tracking-widest">Juara Utama</p>
+    <h2 id="championName" class="text-3xl font-black">-</h2>
+  </div>
+
+  <!-- ============ STANDINGS VIEW ============ -->
+  <section id="view-standings" class="fade-in">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-bold text-lg">Klasemen per Grup</h2>
+      <button id="exportPdfBtn" class="text-xs bg-slate-800 px-3 py-1.5 rounded-lg"><i class="fa-solid fa-file-pdf mr-1"></i>Ekspor PDF</button>
+    </div>
+    <div id="standingsContainer" class="grid gap-4 md:grid-cols-2"></div>
+  </section>
+
+  <!-- ============ BRACKET VIEW ============ -->
+  <section id="view-bracket" class="hidden fade-in">
+    <h2 class="font-bold text-lg mb-3">Bagan Knockout</h2>
+    <div id="bracketContainer" class="flex gap-6 overflow-x-auto pb-4"></div>
+  </section>
+
+  <!-- ============ SCHEDULE VIEW ============ -->
+  <section id="view-schedule" class="hidden fade-in">
+    <h2 class="font-bold text-lg mb-3">Jadwal Pertandingan</h2>
+    <div id="scheduleContainer" class="space-y-2"></div>
+  </section>
+
+  <!-- ============ PRINT AREA (hidden, used only for PDF export) ============ -->
+  <div id="printArea" class="hidden"></div>
+
+  <!-- ============ ADMIN VIEW ============ -->
+  <section id="view-admin" class="hidden fade-in">
+
+    <!-- Login -->
+    <div id="adminLoginBox" class="max-w-sm mx-auto glass rounded-2xl p-6 mt-6">
+      <h2 class="font-bold text-lg mb-4 text-center"><i class="fa-solid fa-lock mr-2"></i>Login Panitia</h2>
+      <input id="loginUser" placeholder="Username" class="w-full mb-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 outline-none">
+      <input id="loginPass" type="password" placeholder="Password" class="w-full mb-3 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 outline-none">
+      <button id="loginSubmitBtn" class="w-full bg-amber-500 text-slate-900 font-bold py-2 rounded-lg">Masuk</button>
+      <p id="loginError" class="text-red-400 text-xs mt-2 text-center hidden"></p>
     </div>
 
-    <main class="max-w-5xl mx-auto px-4 py-4 w-full flex-grow">
-        
-        <!-- Tab Navigation Bar -->
-        <div class="flex bg-slate-800/80 p-1 rounded-xl mb-5 border border-slate-700/60 no-print">
-            <button onclick="switchTab('standings')" id="tab-standings" class="flex-1 py-2 rounded-lg text-xs md:text-sm font-semibold transition flex items-center justify-center gap-2 bg-emerald-600 text-white shadow">
-                <i class="fa-solid fa-trophy text-amber-300"></i>
-                Klasemen
-            </button>
-            <button onclick="switchTab('boardscore')" id="tab-boardscore" class="flex-1 py-2 rounded-lg text-xs md:text-sm font-semibold transition flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200">
-                <i class="fa-solid fa-gamepad"></i>
-                Boardscore
-            </button>
-            <button onclick="switchTab('admin')" id="tab-admin" class="flex-1 py-2 rounded-lg text-xs md:text-sm font-semibold transition flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200">
-                <i class="fa-solid fa-user-gear"></i>
-                Panel Admin
-            </button>
+    <!-- Dashboard -->
+    <div id="adminDashboard" class="hidden">
+      <div class="flex gap-2 overflow-x-auto mb-4">
+        <button data-atab="teams" class="atab-btn px-3 py-2 rounded-lg bg-slate-800 text-xs whitespace-nowrap">Tim</button>
+        <button data-atab="pools" class="atab-btn px-3 py-2 rounded-lg bg-slate-800 text-xs whitespace-nowrap">Pool & Jadwal</button>
+        <button data-atab="knockout" class="atab-btn px-3 py-2 rounded-lg bg-slate-800 text-xs whitespace-nowrap">Knockout</button>
+        <button data-atab="directory" class="atab-btn px-3 py-2 rounded-lg bg-slate-800 text-xs whitespace-nowrap">Direktori PIN</button>
+        <button data-atab="danger" class="atab-btn px-3 py-2 rounded-lg bg-red-900/60 text-xs whitespace-nowrap">Reset Data</button>
+        <button id="logoutBtn" class="ml-auto px-3 py-2 rounded-lg bg-slate-700 text-xs whitespace-nowrap">Keluar</button>
+      </div>
+
+      <!-- Teams -->
+      <div id="atab-teams" class="admin-panel space-y-4">
+        <div class="glass rounded-xl p-4">
+          <h3 class="font-semibold mb-2 text-sm">Tambah Tim Tunggal</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <input id="newTeamName" placeholder="Nama Tim/Pasangan" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 col-span-2">
+            <input id="newPlayer1" placeholder="Pemain 1" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700">
+            <input id="newPlayer2" placeholder="Pemain 2" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700">
+          </div>
+          <button id="addTeamBtn" class="mt-2 bg-emerald-500 text-slate-900 font-bold text-xs px-3 py-2 rounded-lg">Tambah Tim</button>
         </div>
-
-        <section id="sec-standings" class="space-y-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-list-ol text-amber-400"></i>
-                        Klasemen & Jadwal Pertandingan
-                    </h2>
-                    <p class="text-xs text-slate-400">Poin Menang: 1 | Kalah: 0 | Target Skor: 7 Poin</p>
-                </div>
-                <button onclick="exportKlasemenPDF()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition no-print">
-                    <i class="fa-solid fa-file-pdf"></i>
-                    Unduh PDF
-                </button>
-            </div>
-
-            <!-- Group Stage Standings Container -->
-            <div id="standingsContainer" class="space-y-6">
-                <!-- Dynamically Generated Tables -->
-            </div>
-
-            <!-- Knockout Stage Container -->
-            <div id="knockoutContainer" class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 md:p-6">
-                <h3 class="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-sitemap"></i>
-                    Bagan Babak Knockout (Gugur)
-                </h3>
-                <div id="knockoutMatches" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Knockout Matches Loaded Here -->
-                </div>
-            </div>
-        </section>
-
-        <section id="sec-boardscore" class="hidden space-y-6">
-            <div class="bg-slate-800/50 border border-slate-700 p-4 rounded-2xl">
-                <h2 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                    <i class="fa-solid fa-gamepad text-emerald-400"></i>
-                    Pilih Meja Pertandingan
-                </h2>
-                <p class="text-xs text-slate-400 mb-4">Masukkan PIN 4-digit salah satu tim untuk membuka papan skor digital.</p>
-                
-                <div id="activeMatchSelector" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <!-- Match Cards rendered here -->
-                </div>
-            </div>
-
-            <!-- Active Score Board Modal / Display -->
-            <div id="digitalBoardScoreUI" class="hidden bg-slate-900 border-2 border-emerald-500/50 rounded-3xl p-5 md:p-8 shadow-2xl relative">
-                <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
-                    <span id="boardMatchTitle" class="bg-emerald-500/20 text-emerald-300 font-bold px-3 py-1 rounded-full text-xs border border-emerald-500/30">
-                        Meja 1 - Grup A (Babak 1)
-                    </span>
-                    <button onclick="closeBoardScore()" class="text-slate-400 hover:text-white">
-                        <i class="fa-solid fa-xmark text-xl"></i>
-                    </button>
-                </div>
-
-                <!-- Teams Score Controls -->
-                <div class="grid grid-cols-2 gap-4 md:gap-8 items-center text-center">
-                    <!-- Team A -->
-                    <div class="bg-slate-800/90 p-4 md:p-6 rounded-2xl border border-slate-700 space-y-3">
-                        <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Tim A</span>
-                        <h3 id="boardTeamAName" class="font-extrabold text-base md:text-xl text-amber-400 line-clamp-1">Tim Alpha</h3>
-                        <p id="boardTeamAPlayers" class="text-xs text-slate-400 line-clamp-1">Budi / Ani</p>
-                        
-                        <div class="py-2">
-                            <span id="scoreA" class="text-5xl md:text-7xl font-black text-white tracking-tight">0</span>
-                        </div>
-
-                        <div class="flex justify-center gap-2">
-                            <button onclick="adjustScore('A', -1)" class="w-12 h-12 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold text-2xl flex items-center justify-center active:scale-95 transition">-</button>
-                            <button onclick="adjustScore('A', 1)" class="w-12 h-12 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-2xl flex items-center justify-center active:scale-95 transition">+</button>
-                        </div>
-                    </div>
-
-                    <!-- Team B -->
-                    <div class="bg-slate-800/90 p-4 md:p-6 rounded-2xl border border-slate-700 space-y-3">
-                        <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">Tim B</span>
-                        <h3 id="boardTeamBName" class="font-extrabold text-base md:text-xl text-amber-400 line-clamp-1">Tim Beta</h3>
-                        <p id="boardTeamBPlayers" class="text-xs text-slate-400 line-clamp-1">Coki / Deni</p>
-                        
-                        <div class="py-2">
-                            <span id="scoreB" class="text-5xl md:text-7xl font-black text-white tracking-tight">0</span>
-                        </div>
-
-                        <div class="flex justify-center gap-2">
-                            <button onclick="adjustScore('B', -1)" class="w-12 h-12 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold text-2xl flex items-center justify-center active:scale-95 transition">-</button>
-                            <button onclick="adjustScore('B', 1)" class="w-12 h-12 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-2xl flex items-center justify-center active:scale-95 transition">+</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Final Confirmation Button -->
-                <div class="mt-8 pt-4 border-t border-slate-800 flex flex-col items-center">
-                    <button onclick="openDualPinModal()" class="w-full md:w-2/3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold py-3.5 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-lock-check"></i>
-                        Konfirmasi & Simpan Skor Akhir
-                    </button>
-                    <p class="text-[11px] text-slate-400 mt-2">Menyimpan skor memerlukan konfirmasi PIN dari KEDUA Tim.</p>
-                </div>
-            </div>
-        </section>
-
-        <section id="sec-admin" class="hidden space-y-6">
-            <!-- Restricted Overlay if not admin -->
-            <div id="adminLockedNotice" class="bg-amber-500/10 border border-amber-500/30 p-6 rounded-2xl text-center space-y-3">
-                <i class="fa-solid fa-lock text-4xl text-amber-400"></i>
-                <h3 class="font-bold text-lg text-white">Akses Terbatas untuk Admin</h3>
-                <p class="text-xs text-slate-300 max-w-md mx-auto">Silakan login menggunakan akun admin untuk mengelola peserta, membagikan pool/grup, dan mengatur jadwal pertandingan.</p>
-                <button onclick="toggleAuthModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2 rounded-xl text-xs transition">
-                    Login Sekarang
-                </button>
-            </div>
-
-            <!-- Admin Controls (Visible when logged in) -->
-            <div id="adminContent" class="hidden space-y-6">
-                <!-- Registration Tabs -->
-                <div class="bg-slate-800/60 p-5 rounded-2xl border border-slate-700 space-y-4">
-                    <h3 class="font-bold text-base text-amber-400 flex items-center gap-2">
-                        <i class="fa-solid fa-user-plus"></i>
-                        Pendaftaran Peserta
-                    </h3>
-
-                    <!-- Choice of Input Type -->
-                    <div class="flex border-b border-slate-700 text-xs">
-                        <button onclick="toggleAdminRegType('single')" id="regTypeSingleBtn" class="py-2 px-4 font-bold border-b-2 border-emerald-500 text-emerald-400">Input Manual (1 Tim)</button>
-                        <button onclick="toggleAdminRegType('mass')" id="regTypeMassBtn" class="py-2 px-4 font-bold text-slate-400 border-b-2 border-transparent">Input Massal (Banyak Tim)</button>
-                    </div>
-
-                    <!-- Single Input Form -->
-                    <form id="formSingleTeam" onsubmit="handleAddSingleTeam(event)" class="space-y-3">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <input type="text" id="inTeamName" required placeholder="Nama Pasangan / Klub" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-                            <input type="text" id="inPlayer1" required placeholder="Nama Pemain 1" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-                            <input type="text" id="inPlayer2" required placeholder="Nama Pemain 2" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-                        </div>
-                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-plus"></i> Tambah Tim & Generate PIN
-                        </button>
-                    </form>
-
-                    <!-- Mass Input Form -->
-                    <form id="formMassTeam" onsubmit="handleAddMassTeams(event)" class="hidden space-y-3">
-                        <p class="text-[11px] text-slate-400">Format per baris: <code class="text-amber-300">Nama Tim, Pemain 1, Pemain 2</code></p>
-                        <textarea id="inMassData" rows="4" required placeholder="Tim Garudaku, Ahmad, Budi&#10;Tim Bintang, Charlie, Dedi&#10;Tim Elang, Eko, Farhan" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"></textarea>
-                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-file-import"></i> Proses Input Massal
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Tournament Engine Generator Controls -->
-                <div class="bg-slate-800/60 p-5 rounded-2xl border border-slate-700 space-y-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h3 class="font-bold text-base text-amber-400 flex items-center gap-2">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                                Generator Pool & Matchmaking
-                            </h3>
-                            <p class="text-xs text-slate-400">Sistem otomatis membagi 3 tim per pool dan menyusun jadwal 3 babak tanpa lawan berulang.</p>
-                        </div>
-                        <button onclick="generateTournamentStructure()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition shadow flex items-center gap-2">
-                            <i class="fa-solid fa-rotate"></i>
-                            Generate Pool & Jadwal
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Teams List & PIN Directory -->
-                <div class="bg-slate-800/60 p-5 rounded-2xl border border-slate-700 space-y-4">
-                    <h3 class="font-bold text-base text-white flex items-center justify-between">
-                        <span>Daftar Tim Terdaftar (<span id="teamsCount">0</span>)</span>
-                        <button onclick="resetAllData()" class="text-xs text-red-400 hover:text-red-300 underline font-normal">Reset Turnamen</button>
-                    </h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs border-collapse">
-                            <thead>
-                                <tr class="border-b border-slate-700 text-slate-400 font-semibold">
-                                    <th class="p-2">ID</th>
-                                    <th class="p-2">Nama Tim</th>
-                                    <th class="p-2">Pemain</th>
-                                    <th class="p-2">Pool</th>
-                                    <th class="p-2 text-amber-400">PIN Keamanan</th>
-                                </tr>
-                            </thead>
-                            <tbody id="adminTeamsTableBody" class="divide-y divide-slate-800 text-slate-200">
-                                <!-- Render Teams -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    
-    <!-- Modal Login Admin -->
-    <div id="modalAuth" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
-            <button onclick="toggleAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-            <h3 class="text-lg font-bold text-amber-400 mb-1">Otentikasi Admin</h3>
-            <p class="text-xs text-slate-400 mb-4">Masukkan kredensial admin turnamen.</p>
-            
-            <form onsubmit="handleAdminLogin(event)" class="space-y-3">
-                <div>
-                    <label class="text-[11px] font-semibold text-slate-400">Username</label>
-                    <input type="text" id="loginUsername" required class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
-                </div>
-                <div>
-                    <label class="text-[11px] font-semibold text-slate-400">Password</label>
-                    <input type="password" id="loginPassword" required class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
-                </div>
-                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition shadow mt-2">
-                    Masuk Admin
-                </button>
-            </form>
+        <div class="glass rounded-xl p-4">
+          <h3 class="font-semibold mb-2 text-sm">Pendaftaran Massal (satu tim per baris: <code>NamaTim, Pemain1, Pemain2</code>)</h3>
+          <textarea id="bulkTeams" rows="4" placeholder="Tim Kilat, Budi, Andi&#10;Tim Petir, Sari, Dewi" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm"></textarea>
+          <button id="bulkAddBtn" class="mt-2 bg-emerald-500 text-slate-900 font-bold text-xs px-3 py-2 rounded-lg">Impor Massal</button>
         </div>
-    </div>
-
-    <!-- Modal Single PIN Unlock Boardscore -->
-    <div id="modalSinglePin" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
-            <button onclick="closeSinglePinModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-            <h3 class="text-lg font-bold text-emerald-400 mb-1">Buka Papan Skor Meja</h3>
-            <p id="singlePinDesc" class="text-xs text-slate-400 mb-4">Masukkan PIN 4-digit salah satu tim yang bertanding.</p>
-            
-            <form onsubmit="handleVerifySinglePin(event)" class="space-y-4">
-                <input type="password" id="inputBoardPin" maxlength="4" placeholder="****" required class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 text-center text-2xl tracking-[0.5em] text-amber-400 font-mono focus:outline-none focus:border-emerald-500">
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition">
-                    Verifikasi PIN
-                </button>
-            </form>
+        <div class="glass rounded-xl p-4">
+          <h3 class="font-semibold mb-2 text-sm">Daftar Tim (<span id="teamCount">0</span>)</h3>
+          <div id="teamListAdmin" class="space-y-1 max-h-80 overflow-y-auto text-sm"></div>
         </div>
-    </div>
+      </div>
 
-    <!-- Modal Dual PIN Save Score -->
-    <div id="modalDualPin" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 w-full max-w-md shadow-2xl relative">
-            <button onclick="closeDualPinModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-            <h3 class="text-lg font-bold text-amber-400 mb-1 flex items-center gap-2">
-                <i class="fa-solid fa-shield-halved"></i> Verifikasi PIN Ganda
-            </h3>
-            <p class="text-xs text-slate-300 mb-4">Untuk mencegah kecurangan, kedua tim wajib memasukkan PIN masing-masing sebelum skor disimpan.</p>
-            
-            <form onsubmit="handleSaveDualPinScore(event)" class="space-y-4">
-                <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
-                    <label id="lblTeamA" class="text-xs font-bold text-amber-400">PIN Tim A</label>
-                    <input type="password" id="pinTeamA" maxlength="4" required placeholder="****" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-center text-lg tracking-widest text-white font-mono mt-1">
-                </div>
-                
-                <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
-                    <label id="lblTeamB" class="text-xs font-bold text-amber-400">PIN Tim B</label>
-                    <input type="password" id="pinTeamB" maxlength="4" required placeholder="****" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-center text-lg tracking-widest text-white font-mono mt-1">
-                </div>
-
-                <button type="submit" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 rounded-xl text-xs transition shadow-lg">
-                    Konfirmasi & Kirim Hasil Akhir
-                </button>
-            </form>
+      <!-- Pools -->
+      <div id="atab-pools" class="admin-panel hidden space-y-4">
+        <div class="glass rounded-xl p-4">
+          <h3 class="font-semibold mb-2 text-sm">Buat Pool & Jadwal Penyisihan</h3>
+          <p class="text-xs text-slate-400 mb-2">Tim akan diacak & dibagi ke dalam pool berisi 6 tim (3 ronde, tanpa lawan yang sama).</p>
+          <button id="generatePoolsBtn" class="bg-amber-500 text-slate-900 font-bold text-xs px-3 py-2 rounded-lg">
+            <i class="fa-solid fa-shuffle mr-1"></i>Generate Pool & Jadwal
+          </button>
         </div>
+      </div>
+
+      <!-- Knockout -->
+      <div id="atab-knockout" class="admin-panel hidden space-y-4">
+        <div class="glass rounded-xl p-4">
+          <h3 class="font-semibold mb-2 text-sm">Buat Bagan Knockout</h3>
+          <p class="text-xs text-slate-400 mb-2">2 tim teratas tiap pool otomatis lolos, diseeding silang dengan proteksi tim se-grup.</p>
+          <button id="generateKnockoutBtn" class="bg-amber-500 text-slate-900 font-bold text-xs px-3 py-2 rounded-lg">
+            <i class="fa-solid fa-sitemap mr-1"></i>Generate Bagan Knockout
+          </button>
+        </div>
+      </div>
+
+      <!-- Directory -->
+      <div id="atab-directory" class="admin-panel hidden">
+        <div class="glass rounded-xl p-4">
+          <h3 class="font-semibold mb-2 text-sm">Direktori Tim & PIN Keamanan</h3>
+          <div id="directoryList" class="space-y-1 max-h-96 overflow-y-auto text-sm"></div>
+        </div>
+      </div>
+
+      <!-- Danger -->
+      <div id="atab-danger" class="admin-panel hidden">
+        <div class="glass rounded-xl p-4 border border-red-800">
+          <h3 class="font-semibold mb-2 text-sm text-red-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Zona Berbahaya</h3>
+          <p class="text-xs text-slate-400 mb-3">Menghapus seluruh data Tim & Pertandingan secara permanen. Tidak dapat dibatalkan.</p>
+          <button id="resetDbBtn" class="bg-red-600 text-white font-bold text-xs px-3 py-2 rounded-lg">Reset Seluruh Database</button>
+        </div>
+      </div>
     </div>
+  </section>
 
-    <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white border border-slate-700 px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-medium flex items-center gap-2">
-        <i id="toastIcon" class="fa-solid fa-circle-info text-amber-400"></i>
-        <span id="toastMsg">Pesan Notifikasi</span>
+</main>
+
+<!-- ================= MODAL: OPEN BOARD (PIN TUNGGAL) ================= -->
+<div id="modalOpenBoard" class="hidden fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-4">
+  <div class="glass rounded-2xl w-full max-w-sm p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-bold"><i class="fa-solid fa-key mr-2"></i>Buka Papan Skor</h3>
+      <button class="closeModal text-slate-400" data-target="modalOpenBoard"><i class="fa-solid fa-xmark"></i></button>
     </div>
+    <p class="text-xs text-slate-400 mb-3">Masukkan PIN 4-digit salah satu tim yang bertanding di meja ini.</p>
+    <input id="matchIdInput" placeholder="ID Pertandingan (mis. M_abc123)" class="w-full mb-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm">
+    <input id="openPinInput" maxlength="4" inputmode="numeric" placeholder="PIN 4 Digit" class="w-full mb-3 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-center text-xl tracking-[0.5em]">
+    <button id="openBoardSubmitBtn" class="w-full bg-amber-500 text-slate-900 font-bold py-2 rounded-lg">Buka Papan Skor</button>
+    <p id="openBoardError" class="text-red-400 text-xs mt-2 text-center hidden"></p>
+  </div>
+</div>
 
-    <script>
-        
-        // SAKLAR DEPLOYMENT (DAPAT DIUBAH SECARA DINAMIS)
-        const IS_PREVIEW = false; // Set default true untuk mode Canvas Preview dengan Data Dummy
+<!-- ================= MODAL: BOARDSCORE ================= -->
+<div id="modalBoard" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+  <div class="glass rounded-2xl w-full max-w-lg p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-bold" id="boardMatchLabel">Papan Skor</h3>
+      <button class="closeModal text-slate-400" data-target="modalBoard"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="boardLockedBanner" class="hidden text-center bg-red-900/40 text-red-300 text-sm py-2 rounded-lg mb-3">
+      <i class="fa-solid fa-lock mr-1"></i>Skor Terkunci
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="tile rounded-xl p-4 text-center">
+        <p id="boardTeam1Name" class="font-semibold text-sm mb-2 truncate">Tim A</p>
+        <div class="text-5xl font-black mb-3" id="boardScore1">0</div>
+        <div class="flex justify-center gap-2">
+          <button class="score-btn minus1 w-10 h-10 rounded-full bg-slate-700 font-bold">−</button>
+          <button class="score-btn plus1 w-10 h-10 rounded-full bg-emerald-600 font-bold">+</button>
+        </div>
+      </div>
+      <div class="tile rounded-xl p-4 text-center">
+        <p id="boardTeam2Name" class="font-semibold text-sm mb-2 truncate">Tim B</p>
+        <div class="text-5xl font-black mb-3" id="boardScore2">0</div>
+        <div class="flex justify-center gap-2">
+          <button class="score-btn minus2 w-10 h-10 rounded-full bg-slate-700 font-bold">−</button>
+          <button class="score-btn plus2 w-10 h-10 rounded-full bg-emerald-600 font-bold">+</button>
+        </div>
+      </div>
+    </div>
+    <p class="text-[10px] text-slate-500 text-center mt-2">Skor maksimum 10 per tim</p>
+    <button id="saveScoreBtn" class="w-full mt-4 bg-amber-500 text-slate-900 font-bold py-2 rounded-lg">
+      <i class="fa-solid fa-floppy-disk mr-1"></i>Simpan & Kunci Skor
+    </button>
+  </div>
+</div>
 
-        // State Global Aplikasi
-        let appState = {
-            isAdminLoggedIn: false,
-            teams: [],
-            matches: [],
-            pools: [],
-            selectedMatchForBoard: null,
-            boardScoreA: 0,
-            boardScoreB: 0,
-            deferredInstallPrompt: null
-        };
+<!-- ================= MODAL: DUAL PIN VERIFICATION ================= -->
+<div id="modalDualPin" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+  <div class="glass rounded-2xl w-full max-w-sm p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-bold"><i class="fa-solid fa-shield-halved mr-2"></i>Verifikasi PIN Ganda</h3>
+      <button class="closeModal text-slate-400" data-target="modalDualPin"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <p class="text-xs text-slate-400 mb-3">Untuk mencegah manipulasi skor, KEDUA tim wajib memasukkan PIN masing-masing.</p>
+    <label class="text-xs text-slate-400" id="dualPinLabel1">PIN Tim A</label>
+    <input id="dualPin1" maxlength="4" inputmode="numeric" class="w-full mb-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-center tracking-[0.4em]">
+    <label class="text-xs text-slate-400" id="dualPinLabel2">PIN Tim B</label>
+    <input id="dualPin2" maxlength="4" inputmode="numeric" class="w-full mb-3 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-center tracking-[0.4em]">
+    <button id="confirmDualPinBtn" class="w-full bg-emerald-500 text-slate-900 font-bold py-2 rounded-lg">Konfirmasi & Kunci</button>
+    <p id="dualPinError" class="text-red-400 text-xs mt-2 text-center hidden"></p>
+  </div>
+</div>
 
-        function loadDummyData() {
-            appState.teams = [
-                { id: 'TM1', name: 'Domino Juara', p1: 'Rudi', p2: 'Bambang', pin: '1111', pool: 'Grup A' },
-                { id: 'TM2', name: 'Garuda Sakti', p1: 'Andi', p2: 'Cahyo', pin: '2222', pool: 'Grup A' },
-                { id: 'TM3', name: 'Elang Laut', p1: 'Dedi', p2: 'Eko', pin: '3333', pool: 'Grup A' },
-                { id: 'TM4', name: 'Bintang Timur', p1: 'Faris', p2: 'Gani', pin: '4444', pool: 'Grup B' },
-                { id: 'TM5', name: 'Nusantara', p1: 'Hadi', p2: 'Irfan', pin: '5555', pool: 'Grup B' },
-                { id: 'TM6', name: 'Singa Mania', p1: 'Joko', p2: 'Kadir', pin: '6666', pool: 'Grup B' },
-            ];
+<div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-slate-900 border border-slate-700 px-4 py-2 rounded-lg text-sm shadow-xl"></div>
 
-            // Auto Generator Matches dummy
-            generateTournamentStructure(true);
-        }
+<script>
+/* =====================================================================
+   0. KONFIGURASI MODE
+   ===================================================================== */
+// Set false untuk tersambung ke backend sungguhan.
+const IS_PREVIEW = false;
 
-        window.addEventListener('DOMContentLoaded', () => {
-            if (IS_PREVIEW) {
-                document.getElementById('previewBadge').classList.remove('hidden');
-                loadDummyData();
-            } else {
-                fetchBackendData();
-            }
+// URL Web App Apps Script Anda, didapat setelah Deploy > New deployment.
+// Formatnya: https://script.google.com/macros/s/XXXXXXXXXXXX/exec
+// WAJIB diisi ketika IS_PREVIEW = false — file ini (Index.html) boleh
+// di-hosting di mana saja (GitHub Pages, Vercel, Netlify, hosting biasa,
+// dst) selama URL ini menunjuk ke Web App Apps Script yang sudah di-deploy.
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyDcXJ_pk_Y46fl2bj3CocVMYyl7BvHSTseu2fHG7XpF38dIPNChTxHMUEeTXC5zQo/exec";
 
-            renderAllViews();
-            initPWAEvents();
-            registerServiceWorker();
+/* =====================================================================
+   1. LAPISAN API — membungkus fetch() ke Web App Apps Script dalam
+      Promise seragam, dengan data simulasi (dummy) untuk Mode Preview.
+   ===================================================================== */
+let DUMMY = null;
+function buildDummyData(){
+  const poolNames = ['Grup A','Grup B'];
+  const teams = [];
+  let tid = 1;
+  poolNames.forEach(pool => {
+    for(let i=0;i<6;i++){
+      teams.push({
+        team_id:'TM'+tid, team_name:'Tim '+tid, player1:'Pemain '+tid+'A', player2:'Pemain '+tid+'B',
+        pin: String(1000+tid*7), pool_id: pool
+      });
+      tid++;
+    }
+  });
+  const matches = [];
+  let mCounter = 1, table = 1;
+  poolNames.forEach(pool => {
+    const poolTeams = teams.filter(t=>t.pool_id===pool);
+    for(let r=1;r<=3;r++){
+      for(let i=0;i<3;i++){
+        const a = poolTeams[i], b = poolTeams[(i+r)%6];
+        if(a.team_id===b.team_id) continue;
+        const done = Math.random() > 0.4;
+        const s1 = done ? Math.floor(Math.random()*11) : 0;
+        const s2 = done ? (s1===10?Math.floor(Math.random()*9):10) : 0;
+        matches.push({
+          match_id:'M_'+(mCounter++), stage:'Group Stage', round:r, pool_id:pool, table_no:table++,
+          team1_id:a.team_id, team2_id:b.team_id, score1:s1, score2:s2,
+          winner_id: done ? (s1>s2?a.team_id:b.team_id) : '', status: done ? 'Selesai':'Mendatang'
         });
-
-        function fetchBackendData() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run.withSuccessHandler((response) => {
-                    if (response) {
-                        appState.teams = response.teams || [];
-                        appState.matches = response.matches || [];
-                        renderAllViews();
-                    }
-                }).getInitialData();
-            }
-        }
-
-        function switchTab(tabName) {
-            ['standings', 'boardscore', 'admin'].forEach(t => {
-                document.getElementById(`sec-${t}`).classList.add('hidden');
-                const btn = document.getElementById(`tab-${t}`);
-                btn.className = "flex-1 py-2 rounded-lg text-xs md:text-sm font-semibold transition flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200";
-            });
-
-            document.getElementById(`sec-${tabName}`).classList.remove('hidden');
-            const activeBtn = document.getElementById(`tab-${tabName}`);
-            activeBtn.className = "flex-1 py-2 rounded-lg text-xs md:text-sm font-semibold transition flex items-center justify-center gap-2 bg-emerald-600 text-white shadow";
-        }
-
-        function calculateStandings() {
-            // Group teams by pool
-            const poolsMap = {};
-            
-            appState.teams.forEach(team => {
-                if (!team.pool) return;
-                if (!poolsMap[team.pool]) {
-                    poolsMap[team.pool] = {};
-                }
-                poolsMap[team.pool][team.id] = {
-                    id: team.id,
-                    name: team.name,
-                    played: 0,
-                    won: 0,
-                    lost: 0,
-                    points: 0,
-                    scoreFor: 0,
-                    scoreAgainst: 0,
-                    scoreDiff: 0,
-                    headToHead: {}
-                };
-            });
-
-            // Process matches for standings
-            appState.matches.forEach(m => {
-                if (m.stage !== 'Group Stage' || m.status !== 'Selesai') return;
-
-                const poolStats = poolsMap[m.pool];
-                if (!poolStats || !poolStats[m.teamAId] || !poolStats[m.teamBId]) return;
-
-                const tA = poolStats[m.teamAId];
-                const tB = poolStats[m.teamBId];
-
-                tA.played += 1;
-                tB.played += 1;
-
-                tA.scoreFor += m.scoreA;
-                tA.scoreAgainst += m.scoreB;
-                tB.scoreFor += m.scoreB;
-                tB.scoreAgainst += m.scoreA;
-
-                tA.scoreDiff = tA.scoreFor - tA.scoreAgainst;
-                tB.scoreDiff = tB.scoreFor - tB.scoreAgainst;
-
-                // Record head to head win
-                if (m.scoreA > m.scoreB) {
-                    tA.won += 1;
-                    tA.points += 1;
-                    tB.lost += 1;
-                    tA.headToHead[tB.id] = 1;
-                    tB.headToHead[tA.id] = -1;
-                } else if (m.scoreB > m.scoreA) {
-                    tB.won += 1;
-                    tB.points += 1;
-                    tA.lost += 1;
-                    tB.headToHead[tA.id] = 1;
-                    tA.headToHead[tB.id] = -1;
-                }
-            });
-
-            // Sort logic: 1. Points, 2. Score Difference, 3. Head to Head
-            const sortedPools = {};
-            Object.keys(poolsMap).forEach(poolName => {
-                const teamsList = Object.values(poolsMap[poolName]);
-                
-                teamsList.sort((a, b) => {
-                    // 1. Points
-                    if (b.points !== a.points) return b.points - a.points;
-                    // 2. Score Difference
-                    if (b.scoreDiff !== a.scoreDiff) return b.scoreDiff - a.scoreDiff;
-                    // 3. Head to Head
-                    if (a.headToHead[b.id] !== undefined) {
-                        return b.headToHead[a.id] - a.headToHead[b.id];
-                    }
-                    return 0;
-                });
-
-                sortedPools[poolName] = teamsList;
-            });
-
-            return sortedPools;
-        }
-
-        function renderStandingsView() {
-            const container = document.getElementById('standingsContainer');
-            container.innerHTML = '';
-
-            const standingsData = calculateStandings();
-            const poolKeys = Object.keys(standingsData);
-
-            if (poolKeys.length === 0) {
-                container.innerHTML = `
-                    <div class="bg-slate-800/40 p-8 rounded-2xl border border-slate-700 text-center text-slate-400">
-                        <i class="fa-solid fa-folder-open text-3xl mb-2 text-slate-500"></i>
-                        <p class="text-xs">Belum ada grup pool yang dibentuk oleh Admin.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            poolKeys.forEach(poolName => {
-                const teams = standingsData[poolName];
-                
-                let html = `
-                    <div class="bg-slate-800/60 border border-slate-700 rounded-2xl overflow-hidden shadow-lg">
-                        <div class="bg-slate-800 px-4 py-3 border-b border-slate-700 flex justify-between items-center">
-                            <h3 class="font-extrabold text-amber-400 text-sm flex items-center gap-2">
-                                <i class="fa-solid fa-users-rectangle"></i> ${poolName}
-                            </h3>
-                            <span class="text-[11px] text-slate-400">3 Tim per Pool</span>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs border-collapse">
-                                <thead>
-                                    <tr class="border-b border-slate-700 text-slate-400 font-semibold bg-slate-900/40">
-                                        <th class="p-2.5">Pos</th>
-                                        <th class="p-2.5">Nama Tim</th>
-                                        <th class="p-2.5 text-center">M</th>
-                                        <th class="p-2.5 text-center">W</th>
-                                        <th class="p-2.5 text-center">L</th>
-                                        <th class="p-2.5 text-center">Skor</th>
-                                        <th class="p-2.5 text-center">+/-</th>
-                                        <th class="p-2.5 text-center text-amber-400 font-bold">Poin</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-800">
-                `;
-
-                teams.forEach((t, idx) => {
-                    const isQualifying = idx < 2; // 2 tim teratas lolos
-                    html += `
-                        <tr class="${isQualifying ? 'bg-emerald-950/20' : ''}">
-                            <td class="p-2.5 font-bold">
-                                ${idx + 1}
-                                ${isQualifying ? '<span class="text-emerald-400 ml-1">✓</span>' : ''}
-                            </td>
-                            <td class="p-2.5 font-semibold text-white">
-                                ${t.name}
-                            </td>
-                            <td class="p-2.5 text-center text-slate-400">${t.played}</td>
-                            <td class="p-2.5 text-center text-emerald-400">${t.won}</td>
-                            <td class="p-2.5 text-center text-red-400">${t.lost}</td>
-                            <td class="p-2.5 text-center text-slate-300">${t.scoreFor}:${t.scoreAgainst}</td>
-                            <td class="p-2.5 text-center font-mono ${t.scoreDiff >= 0 ? 'text-emerald-400' : 'text-red-400'}">
-                                ${t.scoreDiff > 0 ? '+' : ''}${t.scoreDiff}
-                            </td>
-                            <td class="p-2.5 text-center font-extrabold text-amber-400 text-sm">${t.points}</td>
-                        </tr>
-                    `;
-                });
-
-                html += `
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                `;
-
-                container.insertAdjacentHTML('beforeend', html);
-            });
-
-            renderKnockoutMatches();
-        }
-
-        function renderKnockoutMatches() {
-            const container = document.getElementById('knockoutMatches');
-            container.innerHTML = '';
-
-            const knockoutList = appState.matches.filter(m => m.stage === 'Knockout');
-
-            if (knockoutList.length === 0) {
-                container.innerHTML = `
-                    <p class="text-xs text-slate-400 col-span-2 text-center py-4">Bagan Knockout akan muncul otomatis setelah Babak Penyisihan Pool Selesai.</p>
-                `;
-                return;
-            }
-
-            knockoutList.forEach(m => {
-                const teamA = appState.teams.find(t => t.id === m.teamAId) || { name: m.teamAName || 'Juara Pool' };
-                const teamB = appState.teams.find(t => t.id === m.teamBId) || { name: m.teamBName || 'Runner Up Pool' };
-
-                const html = `
-                    <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-center justify-between">
-                        <div class="space-y-1 flex-1">
-                            <span class="text-[10px] text-amber-400 font-bold block">Meja ${m.tableNo} - ${m.roundName || 'Knockout'}</span>
-                            <div class="flex justify-between items-center pr-4">
-                                <span class="text-xs font-bold text-white">${teamA.name}</span>
-                                <span class="font-extrabold text-amber-400">${m.scoreA}</span>
-                            </div>
-                            <div class="flex justify-between items-center pr-4">
-                                <span class="text-xs font-bold text-white">${teamB.name}</span>
-                                <span class="font-extrabold text-amber-400">${m.scoreB}</span>
-                            </div>
-                        </div>
-                        <span class="text-[10px] px-2 py-1 rounded-full ${m.status === 'Selesai' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'} border border-slate-700 font-semibold">
-                            ${m.status}
-                        </span>
-                    </div>
-                `;
-                container.insertAdjacentHTML('beforeend', html);
-            });
-        }
-
-        function renderBoardscoreSelector() {
-            const container = document.getElementById('activeMatchSelector');
-            container.innerHTML = '';
-
-            if (appState.matches.length === 0) {
-                container.innerHTML = `
-                    <p class="text-xs text-slate-400 col-span-2 text-center py-4">Belum ada pertandingan aktif.</p>
-                `;
-                return;
-            }
-
-            appState.matches.forEach(m => {
-                const teamA = appState.teams.find(t => t.id === m.teamAId);
-                const teamB = appState.teams.find(t => t.id === m.teamBId);
-
-                if (!teamA || !teamB) return;
-
-                const html = `
-                    <div onclick="selectMatchForBoard('${m.id}')" class="bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-emerald-500 p-4 rounded-2xl cursor-pointer transition space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                                Meja ${m.tableNo} (${m.pool})
-                            </span>
-                            <span class="text-[10px] text-slate-400 font-medium">Babak ${m.round}</span>
-                        </div>
-                        <div class="flex justify-between items-center text-xs font-bold text-white pt-1">
-                            <span>${teamA.name}</span>
-                            <span class="text-emerald-400">${m.scoreA}</span>
-                        </div>
-                        <div class="flex justify-between items-center text-xs font-bold text-white">
-                            <span>${teamB.name}</span>
-                            <span class="text-emerald-400">${m.scoreB}</span>
-                        </div>
-                        <div class="pt-2 border-t border-slate-700/60 flex justify-between items-center text-[11px]">
-                            <span class="text-slate-400">${m.status}</span>
-                            <span class="text-emerald-400 font-semibold flex items-center gap-1">
-                                <i class="fa-solid fa-key text-[10px]"></i> Catat Skor
-                            </span>
-                        </div>
-                    </div>
-                `;
-                container.insertAdjacentHTML('beforeend', html);
-            });
-        }
-
-        function selectMatchForBoard(matchId) {
-            const match = appState.matches.find(m => m.id === matchId);
-            if (!match) return;
-
-            appState.selectedMatchForBoard = match;
-            appState.boardScoreA = match.scoreA || 0;
-            appState.boardScoreB = match.scoreB || 0;
-
-            document.getElementById('modalSinglePin').classList.remove('hidden');
-        }
-
-        function closeSinglePinModal() {
-            document.getElementById('modalSinglePin').classList.add('hidden');
-            document.getElementById('inputBoardPin').value = '';
-        }
-
-        function handleVerifySinglePin(e) {
-            e.preventDefault();
-            const pin = document.getElementById('inputBoardPin').value;
-            const match = appState.selectedMatchForBoard;
-
-            if (!match) return;
-
-            const teamA = appState.teams.find(t => t.id === match.teamAId);
-            const teamB = appState.teams.find(t => t.id === match.teamBId);
-
-            if ((teamA && teamA.pin === pin) || (teamB && teamB.pin === pin) || appState.isAdminLoggedIn) {
-                closeSinglePinModal();
-                openBoardScoreUI();
-                showToast('PIN Terverifikasi! Papan Skor dibuka.');
-            } else {
-                showToast('PIN Salah! Masukkan PIN resmi Tim A atau Tim B.', true);
-            }
-        }
-
-        function openBoardScoreUI() {
-            const match = appState.selectedMatchForBoard;
-            const teamA = appState.teams.find(t => t.id === match.teamAId);
-            const teamB = appState.teams.find(t => t.id === match.teamBId);
-
-            document.getElementById('boardMatchTitle').innerText = `Meja ${match.tableNo} - ${match.pool} (Babak ${match.round})`;
-            document.getElementById('boardTeamAName').innerText = teamA.name;
-            document.getElementById('boardTeamAPlayers').innerText = `${teamA.p1} / ${teamA.p2}`;
-            
-            document.getElementById('boardTeamBName').innerText = teamB.name;
-            document.getElementById('boardTeamBPlayers').innerText = `${teamB.p1} / ${teamB.p2}`;
-
-            updateBoardScoreDisplay();
-            document.getElementById('digitalBoardScoreUI').classList.remove('hidden');
-            window.scrollTo({ top: document.getElementById('digitalBoardScoreUI').offsetTop - 20, behavior: 'smooth' });
-        }
-
-        function closeBoardScore() {
-            document.getElementById('digitalBoardScoreUI').classList.add('hidden');
-        }
-
-        function adjustScore(team, delta) {
-            if (team === 'A') {
-                appState.boardScoreA = Math.max(0, Math.min(7, appState.boardScoreA + delta));
-            } else {
-                appState.boardScoreB = Math.max(0, Math.min(7, appState.boardScoreB + delta));
-            }
-            updateBoardScoreDisplay();
-        }
-
-        function updateBoardScoreDisplay() {
-            document.getElementById('scoreA').innerText = appState.boardScoreA;
-            document.getElementById('scoreB').innerText = appState.boardScoreB;
-        }
-
-        function openDualPinModal() {
-            const match = appState.selectedMatchForBoard;
-            const teamA = appState.teams.find(t => t.id === match.teamAId);
-            const teamB = appState.teams.find(t => t.id === match.teamBId);
-
-            document.getElementById('lblTeamA').innerText = `PIN Tim A: ${teamA.name}`;
-            document.getElementById('lblTeamB').innerText = `PIN Tim B: ${teamB.name}`;
-
-            document.getElementById('modalDualPin').classList.remove('hidden');
-        }
-
-        function closeDualPinModal() {
-            document.getElementById('modalDualPin').classList.add('hidden');
-            document.getElementById('pinTeamA').value = '';
-            document.getElementById('pinTeamB').value = '';
-        }
-
-        function handleSaveDualPinScore(e) {
-            e.preventDefault();
-            const pinA = document.getElementById('pinTeamA').value;
-            const pinB = document.getElementById('pinTeamB').value;
-
-            const match = appState.selectedMatchForBoard;
-            const teamA = appState.teams.find(t => t.id === match.teamAId);
-            const teamB = appState.teams.find(t => t.id === match.teamBId);
-
-            // Bypass verification if admin is logged in
-            if (appState.isAdminLoggedIn || (teamA.pin === pinA && teamB.pin === pinB)) {
-                // Update Local State
-                match.scoreA = appState.boardScoreA;
-                match.scoreB = appState.boardScoreB;
-                match.status = 'Selesai';
-                match.winnerId = match.scoreA > match.scoreB ? teamA.id : (match.scoreB > match.scoreA ? teamB.id : null);
-
-                // Auto Trigger Knockout generator if group stage matches complete
-                checkAndGenerateKnockoutStage();
-
-                if (!IS_PREVIEW && typeof google !== 'undefined') {
-                    google.script.run.submitMatchScore(match.id, match.scoreA, match.scoreB);
-                }
-
-                closeDualPinModal();
-                closeBoardScore();
-                renderAllViews();
-                showToast('Skor Pertandingan Berhasil Diverifikasi & Disimpan!');
-            } else {
-                showToast('Verifikasi Dual PIN Gagal! Cek PIN Tim A & Tim B.', true);
-            }
-        }
-
-        function checkAndGenerateKnockoutStage() {
-            const groupMatches = appState.matches.filter(m => m.stage === 'Group Stage');
-            const allFinished = groupMatches.every(m => m.status === 'Selesai');
-
-            if (!allFinished || appState.matches.some(m => m.stage === 'Knockout')) return;
-
-            const standings = calculateStandings();
-            const winners = [];
-            const runnerUps = [];
-
-            Object.keys(standings).forEach(pool => {
-                const teams = standings[pool];
-                if (teams.length >= 1) winners.push(teams[0]);
-                if (teams.length >= 2) runnerUps.push(teams[1]);
-            });
-
-            // Cross-match: Juara Grup vs Runner Up Grup Lain
-            const knockoutMatches = [];
-            let tableCounter = 1;
-
-            for (let i = 0; i < winners.length; i++) {
-                const winner = winners[i];
-                // Pair with runner up from next pool (cyclic)
-                const runnerUp = runnerUps[(i + 1) % runnerUps.length];
-
-                if (winner && runnerUp) {
-                    knockoutMatches.push({
-                        id: `KM_${i + 1}`,
-                        stage: 'Knockout',
-                        round: 1,
-                        roundName: 'Semi Final / Knockout',
-                        pool: 'Knockout',
-                        tableNo: tableCounter++,
-                        teamAId: winner.id,
-                        teamBId: runnerUp.id,
-                        scoreA: 0,
-                        scoreB: 0,
-                        status: 'Mendatang'
-                    });
-                }
-            }
-
-            appState.matches.push(...knockoutMatches);
-        }
-
-        function toggleAuthModal() {
-            document.getElementById('modalAuth').classList.toggle('hidden');
-        }
-
-        function handleAdminLogin(e) {
-            e.preventDefault();
-            const u = document.getElementById('loginUsername').value;
-            const p = document.getElementById('loginPassword').value;
-
-            if (u === 'admin' && (p === 'edudigital' || p === 'admin2026')) {
-                appState.isAdminLoggedIn = true;
-                document.getElementById('authBtnText').innerText = 'Admin Active';
-                document.getElementById('adminLockedNotice').classList.add('hidden');
-                document.getElementById('adminContent').classList.remove('hidden');
-                toggleAuthModal();
-                showToast('Login Admin Berhasil!');
-            } else {
-                showToast('Username / Password Admin Salah!', true);
-            }
-        }
-
-        function toggleAdminRegType(type) {
-            if (type === 'single') {
-                document.getElementById('formSingleTeam').classList.remove('hidden');
-                document.getElementById('formMassTeam').classList.add('hidden');
-                document.getElementById('regTypeSingleBtn').className = "py-2 px-4 font-bold border-b-2 border-emerald-500 text-emerald-400";
-                document.getElementById('regTypeMassBtn').className = "py-2 px-4 font-bold text-slate-400 border-b-2 border-transparent";
-            } else {
-                document.getElementById('formSingleTeam').classList.add('hidden');
-                document.getElementById('formMassTeam').classList.remove('hidden');
-                document.getElementById('regTypeSingleBtn').className = "py-2 px-4 font-bold text-slate-400 border-b-2 border-transparent";
-                document.getElementById('regTypeMassBtn').className = "py-2 px-4 font-bold border-b-2 border-emerald-500 text-emerald-400";
-            }
-        }
-
-        function generate4DigitPin() {
-            return Math.floor(1000 + Math.random() * 9000).toString();
-        }
-
-        function handleAddSingleTeam(e) {
-            e.preventDefault();
-            const name = document.getElementById('inTeamName').value;
-            const p1 = document.getElementById('inPlayer1').value;
-            const p2 = document.getElementById('inPlayer2').value;
-
-            const newTeam = {
-                id: `TM_${appState.teams.length + 1}`,
-                name, p1, p2,
-                pin: generate4DigitPin(),
-                pool: ''
-            };
-
-            appState.teams.push(newTeam);
-            
-            if (!IS_PREVIEW && typeof google !== 'undefined') {
-                google.script.run.saveTeam(newTeam);
-            }
-
-            document.getElementById('inTeamName').value = '';
-            document.getElementById('inPlayer1').value = '';
-            document.getElementById('inPlayer2').value = '';
-
-            renderAllViews();
-            showToast(`Tim ${name} Berhasil Ditambahkan dengan PIN ${newTeam.pin}`);
-        }
-
-        function handleAddMassTeams(e) {
-            e.preventDefault();
-            const rawData = document.getElementById('inMassData').value.trim();
-            const lines = rawData.split('\n');
-
-            let added = 0;
-            lines.forEach(line => {
-                const parts = line.split(',');
-                if (parts.length >= 3) {
-                    const newTeam = {
-                        id: `TM_${appState.teams.length + 1}`,
-                        name: parts[0].trim(),
-                        p1: parts[1].trim(),
-                        p2: parts[2].trim(),
-                        pin: generate4DigitPin(),
-                        pool: ''
-                    };
-                    appState.teams.push(newTeam);
-                    added++;
-                }
-            });
-
-            if (!IS_PREVIEW && typeof google !== 'undefined') {
-                google.script.run.saveMassTeams(appState.teams);
-            }
-
-            document.getElementById('inMassData').value = '';
-            renderAllViews();
-            showToast(`${added} Tim Berhasil Dimuat secara Massal!`);
-        }
-
-        function generateTournamentStructure(silent = false) {
-            if (appState.teams.length < 3) {
-                if (!silent) showToast('Minimal dibutuhkan 3 Tim untuk membuat Pool!', true);
-                return;
-            }
-
-            // Assign Pool (3 teams per pool)
-            const poolsCount = Math.ceil(appState.teams.length / 3);
-            appState.teams.forEach((t, i) => {
-                const poolIndex = Math.floor(i / 3);
-                const poolLetter = String.fromCharCode(65 + poolIndex); // A, B, C...
-                t.pool = `Grup ${poolLetter}`;
-            });
-
-            // Generate Match Schedule
-            appState.matches = [];
-            const poolsMap = {};
-
-            appState.teams.forEach(t => {
-                if (!poolsMap[t.pool]) poolsMap[t.pool] = [];
-                poolsMap[t.pool].push(t);
-            });
-
-            let matchCounter = 1;
-
-            Object.keys(poolsMap).forEach(poolName => {
-                const pTeams = poolsMap[poolName];
-                if (pTeams.length < 2) return;
-
-                // For 3 teams (T1, T2, T3) -> Round 1: T1 vs T2, Round 2: T2 vs T3, Round 3: T1 vs T3
-                if (pTeams.length === 3) {
-                    appState.matches.push({
-                        id: `M_${matchCounter++}`,
-                        stage: 'Group Stage',
-                        round: 1,
-                        pool: poolName,
-                        tableNo: matchCounter - 1,
-                        teamAId: pTeams[0].id,
-                        teamBId: pTeams[1].id,
-                        scoreA: 0, scoreB: 0, status: 'Mendatang'
-                    });
-                    appState.matches.push({
-                        id: `M_${matchCounter++}`,
-                        stage: 'Group Stage',
-                        round: 2,
-                        pool: poolName,
-                        tableNo: matchCounter - 1,
-                        teamAId: pTeams[1].id,
-                        teamBId: pTeams[2].id,
-                        scoreA: 0, scoreB: 0, status: 'Mendatang'
-                    });
-                    appState.matches.push({
-                        id: `M_${matchCounter++}`,
-                        stage: 'Group Stage',
-                        round: 3,
-                        pool: poolName,
-                        tableNo: matchCounter - 1,
-                        teamAId: pTeams[0].id,
-                        teamBId: pTeams[2].id,
-                        scoreA: 0, scoreB: 0, status: 'Mendatang'
-                    });
-                }
-            });
-
-            if (!IS_PREVIEW && typeof google !== 'undefined') {
-                google.script.run.generateTournament(appState.teams, appState.matches);
-            }
-
-            renderAllViews();
-            if (!silent) showToast('Grup Pool & Jadwal 3 Babak Berhasil Dibuat!');
-        }
-
-        function resetAllData() {
-            if (confirm('Apakah Anda yakin ingin mereset seluruh data turnamen?')) {
-                appState.teams = [];
-                appState.matches = [];
-                renderAllViews();
-                showToast('Seluruh data turnamen direset.');
-            }
-        }
-
-        function renderAdminView() {
-            document.getElementById('teamsCount').innerText = appState.teams.length;
-            const tbody = document.getElementById('adminTeamsTableBody');
-            tbody.innerHTML = '';
-
-            appState.teams.forEach(t => {
-                const tr = `
-                    <tr class="hover:bg-slate-800/40">
-                        <td class="p-2 font-mono text-[11px] text-slate-400">${t.id}</td>
-                        <td class="p-2 font-bold text-white">${t.name}</td>
-                        <td class="p-2 text-slate-300">${t.p1} / ${t.p2}</td>
-                        <td class="p-2"><span class="bg-slate-800 px-2 py-0.5 rounded border border-slate-700 text-[10px] text-amber-300">${t.pool || 'Belum ada'}</span></td>
-                        <td class="p-2 font-mono font-bold text-emerald-400">${t.pin}</td>
-                    </tr>
-                `;
-                tbody.insertAdjacentHTML('beforeend', tr);
-            });
-        }
-
-        function renderAllViews() {
-            renderStandingsView();
-            renderBoardscoreSelector();
-            renderAdminView();
-        }
-
-        function exportKlasemenPDF() {
-            window.print();
-        }
-
-        function showToast(msg, isError = false) {
-            const toast = document.getElementById('toast');
-            const icon = document.getElementById('toastIcon');
-            document.getElementById('toastMsg').innerText = msg;
-
-            if (isError) {
-                icon.className = "fa-solid fa-triangle-exclamation text-red-400";
-            } else {
-                icon.className = "fa-solid fa-circle-check text-emerald-400";
-            }
-
-            toast.classList.remove('hidden');
-            setTimeout(() => {
-                toast.classList.add('hidden');
-            }, 3000);
-        }
-
-        function initPWAEvents() {
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                appState.deferredInstallPrompt = e;
-                document.getElementById('pwaInstallBanner').classList.remove('hidden');
-            });
-        }
-
-        function installPWA() {
-            if (appState.deferredInstallPrompt) {
-                appState.deferredInstallPrompt.prompt();
-                appState.deferredInstallPrompt.userChoice.then((choice) => {
-                    if (choice.outcome === 'accepted') {
-                        showToast('Terima kasih telah menginstal PWA Domino!');
-                    }
-                    dismissPWA();
-                });
-            }
-        }
-
-        function dismissPWA() {
-            document.getElementById('pwaInstallBanner').classList.add('hidden');
-        }
-
-        function registerServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                const swCode = `
-                    self.addEventListener('install', (e) => {
-                        self.skipWaiting();
-                    });
-                    self.addEventListener('fetch', (e) => {
-                        e.respondWith(fetch(e.request).catch(() => new Response('Offline Mode Active')));
-                    });
-                `;
-                const blob = new Blob([swCode], { type: 'text/javascript' });
-                const swUrl = URL.createObjectURL(blob);
-                navigator.serviceWorker.register(swUrl).catch(err => console.log('SW Reg Failed', err));
-            }
-        }
-    </script>
+      }
+    }
+  });
+  // knockout contoh (belum selesai)
+  matches.push({match_id:'KM_R1_1', stage:'Knockout', round:1, pool_id:'Perempat Final', table_no:table++, team1_id:'TM1', team2_id:'TM8', score1:0,score2:0, winner_id:'', status:'Mendatang'});
+  matches.push({match_id:'KM_R1_2', stage:'Knockout', round:1, pool_id:'Perempat Final', table_no:table++, team1_id:'TM7', team2_id:'TM2', score1:0,score2:0, winner_id:'', status:'Mendatang'});
+  matches.push({match_id:'KM_R2_1', stage:'Knockout', round:2, pool_id:'Semi Final', table_no:table++, team1_id:'', team2_id:'', score1:0,score2:0, winner_id:'', status:'Menunggu'});
+  const settings = [{key:'target_score',value:'10'},{key:'pool_size',value:'6'},{key:'tournament_name',value:'Turnamen Domino 2026 (Preview)'}];
+  return { teams, matches, settings };
+}
+
+function computeStandingsLocal(teams, matches){
+  const groupMatches = matches.filter(m=>m.stage==='Group Stage' && m.status==='Selesai');
+  const byPool = {};
+  teams.forEach(t=>{
+    if(!t.pool_id) return;
+    byPool[t.pool_id] = byPool[t.pool_id] || {};
+    byPool[t.pool_id][t.team_id] = {team_id:t.team_id, team_name:t.team_name, points:0, win:0, lose:0, scoreFor:0, scoreAgainst:0, diff:0};
+  });
+  groupMatches.forEach(m=>{
+    const pool = byPool[m.pool_id]; if(!pool) return;
+    const t1 = pool[m.team1_id], t2 = pool[m.team2_id];
+    if(!t1||!t2) return;
+    t1.scoreFor += Number(m.score1); t1.scoreAgainst += Number(m.score2);
+    t2.scoreFor += Number(m.score2); t2.scoreAgainst += Number(m.score1);
+    if(String(m.winner_id)===String(m.team1_id)){ t1.win++; t1.points++; t2.lose++; }
+    else if(String(m.winner_id)===String(m.team2_id)){ t2.win++; t2.points++; t1.lose++; }
+  });
+  const result = {};
+  Object.keys(byPool).forEach(pool=>{
+    const list = Object.values(byPool[pool]).map(t=>{ t.diff=t.scoreFor-t.scoreAgainst; return t; });
+    list.sort((a,b)=>{
+      if(b.points!==a.points) return b.points-a.points;
+      if(b.diff!==a.diff) return b.diff-a.diff;
+      return 0;
+    });
+    result[pool]=list;
+  });
+  return result;
+}
+
+async function gsRun(fnName, ...args){
+  if(IS_PREVIEW){
+    await new Promise(r=>setTimeout(r, 150));
+    return previewApi(fnName, args);
+  }
+
+  if(!WEB_APP_URL || WEB_APP_URL.indexOf('GANTI_DENGAN_URL') !== -1){
+    throw new Error('WEB_APP_URL belum diisi. Buka bagian atas <script> dan isi dengan URL Web App Apps Script Anda.');
+  }
+
+  // Content-Type: text/plain (BUKAN application/json) secara sengaja —
+  // ini membuat browser menganggapnya "simple request" sehingga TIDAK
+  // memicu preflight OPTIONS, yang tidak didukung Apps Script Web App.
+  let res;
+  try{
+    res = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: fnName, args: args })
+    });
+  }catch(networkErr){
+    throw new Error('Gagal menghubungi server (jaringan/CORS): ' + networkErr.message);
+  }
+
+  if(!res.ok){
+    throw new Error('Server merespons status HTTP ' + res.status);
+  }
+  const data = await res.json();
+  return data;
+}
+
+function previewApi(fnName, args){
+  if(!DUMMY) DUMMY = buildDummyData();
+  switch(fnName){
+    case 'loginAdmin': {
+      const [u,p] = args;
+      if(u==='admin' && p==='admin2026') return {success:true, message:'Login berhasil (preview)'};
+      return {success:false, message:'Username atau password salah'};
+    }
+    case 'getPublicData':
+      return { teams:DUMMY.teams, matches:DUMMY.matches, settings:DUMMY.settings, standings: computeStandingsLocal(DUMMY.teams, DUMMY.matches) };
+    case 'getTeams': return DUMMY.teams;
+    case 'registerTeamSingle': {
+      const [team] = args;
+      const id = 'TM'+(DUMMY.teams.length+1);
+      const pin = String(1000+Math.floor(Math.random()*9000));
+      DUMMY.teams.push({team_id:id, team_name:team.team_name, player1:team.player1, player2:team.player2, pin, pool_id:''});
+      return {success:true, team_id:id, pin};
+    }
+    case 'registerTeamsBulk': {
+      const [raw] = args;
+      const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+      lines.forEach(line=>{
+        const parts = line.split(',').map(p=>p.trim());
+        const id = 'TM'+(DUMMY.teams.length+1);
+        const pin = String(1000+Math.floor(Math.random()*9000));
+        DUMMY.teams.push({team_id:id, team_name:parts[0]||('Tim '+id), player1:parts[1]||'', player2:parts[2]||'', pin, pool_id:''});
+      });
+      return {success:true, count:lines.length};
+    }
+    case 'deleteTeam': {
+      const [id] = args;
+      DUMMY.teams = DUMMY.teams.filter(t=>t.team_id!==id);
+      return {success:true};
+    }
+    case 'resetDatabase': {
+      DUMMY.teams = []; DUMMY.matches = [];
+      return {success:true, message:'Data direset (preview)'};
+    }
+    case 'generatePools':
+      return {success:true, message:'(Preview) gunakan data simulasi yang sudah tersedia.'};
+    case 'generateKnockout':
+      return {success:true, message:'(Preview) bagan knockout simulasi sudah tersedia.'};
+    case 'getTeamDirectory':
+      return DUMMY.teams.map(t=>({team_id:t.team_id, team_name:t.team_name, pin:t.pin, pool_id:t.pool_id}));
+    case 'openBoard': {
+      const [matchId, pin] = args;
+      const match = DUMMY.matches.find(m=>m.match_id===matchId);
+      if(!match) return {success:false, message:'Pertandingan tidak ditemukan.'};
+      const t1 = DUMMY.teams.find(t=>t.team_id===match.team1_id);
+      const t2 = DUMMY.teams.find(t=>t.team_id===match.team2_id);
+      if(!t1 || !t2) return {success:false, message:'Data tim tidak lengkap untuk pertandingan ini.'};
+      if(String(pin)!==String(t1.pin) && String(pin)!==String(t2.pin)) return {success:false, message:'PIN salah.'};
+      if(match.status==='Selesai') return {success:false, message:'Skor Terkunci.', locked:true};
+      return {success:true, match, team1:t1, team2:t2};
+    }
+    case 'updateScore': {
+      const [matchId, s1, s2, pin1, pin2] = args;
+      const match = DUMMY.matches.find(m=>m.match_id===matchId);
+      const t1 = DUMMY.teams.find(t=>t.team_id===match.team1_id);
+      const t2 = DUMMY.teams.find(t=>t.team_id===match.team2_id);
+      const valid = (String(pin1)===String(t1.pin) && String(pin2)===String(t2.pin)) || (String(pin1)===String(t2.pin) && String(pin2)===String(t1.pin));
+      if(!valid) return {success:false, message:'Verifikasi PIN Ganda gagal.'};
+      match.score1 = Math.min(Number(s1),10); match.score2 = Math.min(Number(s2),10);
+      match.winner_id = match.score1>match.score2 ? t1.team_id : (match.score2>match.score1 ? t2.team_id : '');
+      match.status = 'Selesai';
+      return {success:true, message:'Skor tersimpan & terkunci (preview).', winner_id: match.winner_id};
+    }
+    case 'adminUnlockMatch': {
+      const [matchId] = args;
+      const match = DUMMY.matches.find(m=>m.match_id===matchId);
+      if(match) match.status='Mendatang';
+      return {success:true};
+    }
+    default: return {success:false, message:'Fungsi preview tidak dikenal: '+fnName};
+  }
+}
+
+/* =====================================================================
+   2. STATE & UTIL
+   ===================================================================== */
+let STATE = { publicData:null, currentBoard:null, isAdmin:false };
+
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.remove('hidden');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.add('hidden'), 2500);
+}
+function openModal(id){ document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('.closeModal').forEach(b=>b.addEventListener('click', ()=>closeModal(b.dataset.target)));
+
+/* =====================================================================
+   3. RENDER: KLASEMEN / STANDINGS
+   ===================================================================== */
+function renderStandings(){
+  const c = document.getElementById('standingsContainer');
+  const standings = STATE.publicData.standings;
+  const pools = Object.keys(standings).sort();
+  if(pools.length===0){ c.innerHTML = '<p class="text-slate-500 text-sm col-span-2">Belum ada data pool.</p>'; return; }
+  c.innerHTML = pools.map(pool=>{
+    const rows = standings[pool].map((t,i)=>`
+      <tr class="border-b border-slate-800 ${i<2?'bg-emerald-900/20':''}">
+        <td class="py-1.5 pl-2 text-slate-400">${i+1}</td>
+        <td class="py-1.5 font-medium">${t.team_name}</td>
+        <td class="py-1.5 text-center">${t.points}</td>
+        <td class="py-1.5 text-center">${t.win}-${t.lose}</td>
+        <td class="py-1.5 text-center pr-2">${t.diff>0?'+':''}${t.diff}</td>
+      </tr>`).join('');
+    return `
+    <div class="tile rounded-xl p-4">
+      <h3 class="font-bold mb-2 text-amber-400">${pool}</h3>
+      <table class="w-full text-xs">
+        <thead><tr class="text-slate-500 text-left">
+          <th class="pl-2 font-normal">#</th><th class="font-normal">Tim</th>
+          <th class="font-normal text-center">Poin</th><th class="font-normal text-center">M-K</th>
+          <th class="font-normal text-center pr-2">Selisih</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p class="text-[10px] text-slate-500 mt-2">Hijau = lolos ke Knockout</p>
+    </div>`;
+  }).join('');
+}
+
+/* =====================================================================
+   4. RENDER: BRACKET / KNOCKOUT
+   ===================================================================== */
+function renderBracket(){
+  const c = document.getElementById('bracketContainer');
+  const teams = STATE.publicData.teams;
+  const knockout = STATE.publicData.matches.filter(m=>m.stage==='Knockout');
+  if(knockout.length===0){ c.innerHTML = '<p class="text-slate-500 text-sm">Bagan Knockout belum dibuat.</p>'; return; }
+  const byRound = {};
+  knockout.forEach(m=>{ byRound[m.round] = byRound[m.round]||[]; byRound[m.round].push(m); });
+  const teamName = id => (teams.find(t=>t.team_id===id)||{}).team_name || 'TBD';
+
+  const rounds = Object.keys(byRound).sort((a,b)=>a-b);
+  c.innerHTML = rounds.map(r=>{
+    const ms = byRound[r];
+    const label = ms[0].pool_id;
+    return `<div class="min-w-[220px]">
+      <p class="text-xs font-bold text-amber-400 mb-2 text-center">${label}</p>
+      <div class="space-y-4">
+        ${ms.map(m=>`
+          <div class="tile rounded-lg p-3 text-xs">
+            <div class="flex justify-between py-1 ${m.winner_id===m.team1_id?'text-emerald-400 font-bold':''}">
+              <span class="truncate">${teamName(m.team1_id)}</span><span>${m.status==='Selesai'?m.score1:''}</span>
+            </div>
+            <div class="h-px bg-slate-700 my-1"></div>
+            <div class="flex justify-between py-1 ${m.winner_id===m.team2_id?'text-emerald-400 font-bold':''}">
+              <span class="truncate">${teamName(m.team2_id)}</span><span>${m.status==='Selesai'?m.score2:''}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Juara utama = pemenang match ronde terakhir jika hanya 1 match & Selesai
+  const lastRound = byRound[rounds[rounds.length-1]];
+  if(lastRound && lastRound.length===1 && lastRound[0].status==='Selesai' && lastRound[0].winner_id){
+    document.getElementById('championBanner').classList.remove('hidden');
+    document.getElementById('championName').textContent = teamName(lastRound[0].winner_id);
+  } else {
+    document.getElementById('championBanner').classList.add('hidden');
+  }
+}
+
+/* =====================================================================
+   5. RENDER: JADWAL
+   ===================================================================== */
+function renderSchedule(){
+  const c = document.getElementById('scheduleContainer');
+  const teams = STATE.publicData.teams;
+  const teamName = id => (teams.find(t=>t.team_id===id)||{}).team_name || 'TBD';
+  const matches = STATE.publicData.matches.slice().sort((a,b)=>a.table_no-b.table_no);
+  if(matches.length===0){ c.innerHTML = '<p class="text-slate-500 text-sm">Belum ada jadwal.</p>'; return; }
+  c.innerHTML = matches.map(m=>`
+    <div class="tile rounded-lg p-3 flex items-center justify-between text-sm">
+      <div>
+        <p class="font-medium">${teamName(m.team1_id)} <span class="text-slate-500">vs</span> ${teamName(m.team2_id)}</p>
+        <p class="text-[10px] text-slate-500">${m.stage} • ${m.pool_id} • Meja ${m.table_no} • ID: ${m.match_id}</p>
+      </div>
+      <div class="text-right">
+        <span class="text-xs px-2 py-1 rounded-full ${m.status==='Selesai'?'bg-emerald-900/50 text-emerald-400':'bg-slate-700 text-slate-300'}">${m.status}</span>
+        ${m.status==='Selesai'?`<p class="text-xs mt-1 font-bold">${m.score1} - ${m.score2}</p>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function renderPrintArea(){
+  const teams = STATE.publicData.teams;
+  const teamName = id => (teams.find(t=>t.team_id===id)||{}).team_name || 'TBD';
+  const standings = STATE.publicData.standings;
+  let html = `<h1 style="font-size:20px;font-weight:800;">${document.getElementById('tournamentTitle').textContent}</h1>
+    <h2 style="font-size:16px;margin-top:12px;">Klasemen</h2>`;
+  Object.keys(standings).sort().forEach(pool=>{
+    html += `<h3 style="margin-top:8px;font-size:13px;">${pool}</h3><table style="width:100%;border-collapse:collapse;font-size:11px;">
+      <tr><th style="text-align:left;border-bottom:1px solid #000;">Tim</th><th style="border-bottom:1px solid #000;">Poin</th><th style="border-bottom:1px solid #000;">M-K</th><th style="border-bottom:1px solid #000;">Selisih</th></tr>
+      ${standings[pool].map(t=>`<tr><td>${t.team_name}</td><td style="text-align:center;">${t.points}</td><td style="text-align:center;">${t.win}-${t.lose}</td><td style="text-align:center;">${t.diff}</td></tr>`).join('')}
+    </table>`;
+  });
+  html += `<h2 style="font-size:16px;margin-top:16px;">Jadwal Pertandingan</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <tr><th style="border-bottom:1px solid #000;">Meja</th><th style="border-bottom:1px solid #000;">Babak</th><th style="border-bottom:1px solid #000;text-align:left;">Pertandingan</th><th style="border-bottom:1px solid #000;">Skor</th></tr>
+    ${STATE.publicData.matches.map(m=>`<tr><td style="text-align:center;">${m.table_no}</td><td style="text-align:center;">${m.pool_id}</td><td>${teamName(m.team1_id)} vs ${teamName(m.team2_id)}</td><td style="text-align:center;">${m.status==='Selesai'?m.score1+'-'+m.score2:'-'}</td></tr>`).join('')}
+    </table>`;
+  document.getElementById('printArea').innerHTML = html;
+}
+
+/* =====================================================================
+   6. LOAD DATA PUBLIK
+   ===================================================================== */
+async function loadPublicData(){
+  try{
+    STATE.publicData = await gsRun('getPublicData');
+    document.getElementById('tournamentTitle').textContent =
+      (STATE.publicData.settings.find(s=>s.key==='tournament_name')||{}).value || 'Turnamen Domino';
+    renderStandings(); renderBracket(); renderSchedule();
+    if(STATE.isAdmin) renderAdminTeamList();
+  }catch(e){ toast('Gagal memuat data: '+e.message); }
+}
+
+/* =====================================================================
+   7. TAB NAVIGATION (PUBLIC)
+   ===================================================================== */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('tab-active'));
+    btn.classList.add('tab-active');
+    ['standings','bracket','schedule'].forEach(v=>document.getElementById('view-'+v).classList.add('hidden'));
+    document.getElementById('view-'+btn.dataset.tab).classList.remove('hidden');
+    document.getElementById('view-admin').classList.add('hidden');
+    document.getElementById('publicTabs').classList.remove('hidden');
+  });
+});
+document.querySelector('.tab-btn[data-tab="standings"]').classList.add('tab-active');
+
+document.getElementById('adminNavBtn').addEventListener('click', ()=>{
+  ['standings','bracket','schedule'].forEach(v=>document.getElementById('view-'+v).classList.add('hidden'));
+  document.getElementById('publicTabs').classList.add('hidden');
+  document.getElementById('view-admin').classList.remove('hidden');
+});
+
+/* =====================================================================
+   8. ADMIN: LOGIN
+   ===================================================================== */
+document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  try{
+    const res = await gsRun('loginAdmin', u, p);
+    const errEl = document.getElementById('loginError');
+    if(res.success){
+      STATE.isAdmin = true;
+      document.getElementById('adminLoginBox').classList.add('hidden');
+      document.getElementById('adminDashboard').classList.remove('hidden');
+      document.getElementById('adminNavLabel').textContent = 'Dashboard';
+      renderAdminTeamList(); renderDirectory();
+      errEl.classList.add('hidden');
+    } else {
+      errEl.textContent = res.message; errEl.classList.remove('hidden');
+    }
+  }catch(e){ toast('Error: '+e.message); }
+});
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  STATE.isAdmin = false;
+  document.getElementById('adminLoginBox').classList.remove('hidden');
+  document.getElementById('adminDashboard').classList.add('hidden');
+  document.getElementById('adminNavLabel').textContent = 'Admin';
+});
+
+document.querySelectorAll('.atab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.admin-panel').forEach(p=>p.classList.add('hidden'));
+    document.getElementById('atab-'+btn.dataset.atab).classList.remove('hidden');
+    document.querySelectorAll('.atab-btn').forEach(b=>b.classList.remove('tab-active'));
+    btn.classList.add('tab-active');
+  });
+});
+
+/* =====================================================================
+   9. ADMIN: MANAJEMEN TIM
+   ===================================================================== */
+function renderAdminTeamList(){
+  gsRun('getTeams').then(teams=>{
+    document.getElementById('teamCount').textContent = teams.length;
+    document.getElementById('teamListAdmin').innerHTML = teams.map(t=>`
+      <div class="flex items-center justify-between bg-slate-800/60 rounded-lg px-3 py-2">
+        <div><p class="font-medium">${t.team_name}</p><p class="text-[10px] text-slate-500">${t.player1} & ${t.player2} • ${t.pool_id||'Belum ada pool'}</p></div>
+        <button data-id="${t.team_id}" class="delTeamBtn text-red-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+      </div>`).join('') || '<p class="text-slate-500">Belum ada tim.</p>';
+    document.querySelectorAll('.delTeamBtn').forEach(b=>b.addEventListener('click', async ()=>{
+      await gsRun('deleteTeam', b.dataset.id);
+      toast('Tim dihapus'); renderAdminTeamList(); loadPublicData();
+    }));
+  });
+}
+
+document.getElementById('addTeamBtn').addEventListener('click', async ()=>{
+  const team_name = document.getElementById('newTeamName').value.trim();
+  const player1 = document.getElementById('newPlayer1').value.trim();
+  const player2 = document.getElementById('newPlayer2').value.trim();
+  if(!team_name){ toast('Nama tim wajib diisi'); return; }
+  const res = await gsRun('registerTeamSingle', {team_name, player1, player2});
+  if(res.success){
+    toast('Tim ditambahkan • PIN: '+res.pin);
+    document.getElementById('newTeamName').value='';
+    document.getElementById('newPlayer1').value='';
+    document.getElementById('newPlayer2').value='';
+    renderAdminTeamList(); loadPublicData();
+  }
+});
+
+document.getElementById('bulkAddBtn').addEventListener('click', async ()=>{
+  const raw = document.getElementById('bulkTeams').value.trim();
+  if(!raw){ toast('Isi daftar tim terlebih dahulu'); return; }
+  const res = await gsRun('registerTeamsBulk', raw);
+  toast(res.count+' tim berhasil diimpor');
+  document.getElementById('bulkTeams').value='';
+  renderAdminTeamList(); loadPublicData();
+});
+
+/* =====================================================================
+   10. ADMIN: POOL & KNOCKOUT
+   ===================================================================== */
+document.getElementById('generatePoolsBtn').addEventListener('click', async ()=>{
+  const res = await gsRun('generatePools', 6);
+  toast(res.message || 'Pool dibuat');
+  loadPublicData();
+});
+document.getElementById('generateKnockoutBtn').addEventListener('click', async ()=>{
+  const res = await gsRun('generateKnockout');
+  toast(res.message || 'Knockout dibuat');
+  loadPublicData();
+});
+
+/* =====================================================================
+   11. ADMIN: DIREKTORI PIN
+   ===================================================================== */
+function renderDirectory(){
+  gsRun('getTeamDirectory').then(list=>{
+    document.getElementById('directoryList').innerHTML = list.map(t=>`
+      <div class="flex items-center justify-between bg-slate-800/60 rounded-lg px-3 py-2">
+        <span>${t.team_name} <span class="text-slate-500 text-xs">(${t.pool_id||'-'})</span></span>
+        <span class="font-mono font-bold text-amber-400">${t.pin}</span>
+      </div>`).join('') || '<p class="text-slate-500">Belum ada tim.</p>';
+  });
+}
+
+/* =====================================================================
+   12. ADMIN: RESET DATABASE
+   ===================================================================== */
+document.getElementById('resetDbBtn').addEventListener('click', async ()=>{
+  if(!confirm('Yakin ingin menghapus SELURUH data Tim & Pertandingan? Tindakan ini tidak dapat dibatalkan.')) return;
+  const res = await gsRun('resetDatabase');
+  toast(res.message);
+  renderAdminTeamList(); renderDirectory(); loadPublicData();
+});
+
+/* =====================================================================
+   13. PAPAN SKOR (BOARDSCORE)
+   ===================================================================== */
+document.getElementById('openBoardTabBtn').addEventListener('click', ()=>openModal('modalOpenBoard'));
+
+document.getElementById('openBoardSubmitBtn').addEventListener('click', async ()=>{
+  const matchId = document.getElementById('matchIdInput').value.trim();
+  const pin = document.getElementById('openPinInput').value.trim();
+  const errEl = document.getElementById('openBoardError');
+  try{
+    const res = await gsRun('openBoard', matchId, pin);
+    if(!res.success){ errEl.textContent = res.message; errEl.classList.remove('hidden'); return; }
+    errEl.classList.add('hidden');
+    STATE.currentBoard = res;
+    document.getElementById('boardTeam1Name').textContent = res.team1.team_name;
+    document.getElementById('boardTeam2Name').textContent = res.team2.team_name;
+    document.getElementById('boardScore1').textContent = res.match.score1 || 0;
+    document.getElementById('boardScore2').textContent = res.match.score2 || 0;
+    document.getElementById('boardMatchLabel').textContent = res.team1.team_name+' vs '+res.team2.team_name;
+    document.getElementById('boardLockedBanner').classList.add('hidden');
+    closeModal('modalOpenBoard');
+    openModal('modalBoard');
+  }catch(e){ errEl.textContent = e.message; errEl.classList.remove('hidden'); }
+});
+
+function boardScoreVal(id){ return parseInt(document.getElementById(id).textContent, 10); }
+function setBoardScore(id, val){ document.getElementById(id).textContent = Math.max(0, Math.min(10, val)); }
+
+document.querySelector('.plus1').addEventListener('click', ()=>setBoardScore('boardScore1', boardScoreVal('boardScore1')+1));
+document.querySelector('.minus1').addEventListener('click', ()=>setBoardScore('boardScore1', boardScoreVal('boardScore1')-1));
+document.querySelector('.plus2').addEventListener('click', ()=>setBoardScore('boardScore2', boardScoreVal('boardScore2')+1));
+document.querySelector('.minus2').addEventListener('click', ()=>setBoardScore('boardScore2', boardScoreVal('boardScore2')-1));
+
+document.getElementById('saveScoreBtn').addEventListener('click', ()=>{
+  if(!STATE.currentBoard) return;
+  document.getElementById('dualPinLabel1').textContent = 'PIN ' + STATE.currentBoard.team1.team_name;
+  document.getElementById('dualPinLabel2').textContent = 'PIN ' + STATE.currentBoard.team2.team_name;
+  document.getElementById('dualPin1').value=''; document.getElementById('dualPin2').value='';
+  document.getElementById('dualPinError').classList.add('hidden');
+  openModal('modalDualPin');
+});
+
+document.getElementById('confirmDualPinBtn').addEventListener('click', async ()=>{
+  const pin1 = document.getElementById('dualPin1').value.trim();
+  const pin2 = document.getElementById('dualPin2').value.trim();
+  const errEl = document.getElementById('dualPinError');
+  try{
+    const res = await gsRun('updateScore', STATE.currentBoard.match.match_id,
+      boardScoreVal('boardScore1'), boardScoreVal('boardScore2'), pin1, pin2);
+    if(!res.success){ errEl.textContent = res.message; errEl.classList.remove('hidden'); return; }
+    toast('Skor tersimpan & terkunci!');
+    closeModal('modalDualPin'); closeModal('modalBoard');
+    document.getElementById('boardLockedBanner').classList.remove('hidden');
+    loadPublicData();
+  }catch(e){ errEl.textContent = e.message; errEl.classList.remove('hidden'); }
+});
+
+/* =====================================================================
+   14. EKSPOR PDF (cetak browser)
+   ===================================================================== */
+document.getElementById('exportPdfBtn').addEventListener('click', ()=>{
+  renderPrintArea();
+  window.print();
+});
+
+/* =====================================================================
+   15. PWA: MANIFEST (Data URI) + SERVICE WORKER (Blob) + INSTALL PROMPT
+   ===================================================================== */
+(function setupPWA(){
+  const manifest = {
+    name: "Turnamen Domino",
+    short_name: "Domino",
+    start_url: ".",
+    display: "standalone",
+    background_color: "#0f172a",
+    theme_color: "#0f172a",
+    icons: [{
+      src: "data:image/svg+xml," + encodeURIComponent(
+        `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='#f59e0b'/><text x='50' y='68' font-size='55' font-family='Arial' font-weight='bold' text-anchor='middle' fill='#0f172a'>D</text></svg>`),
+      sizes: "192x192", type: "image/svg+xml"
+    }]
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const manifestURL = URL.createObjectURL(manifestBlob);
+  const link = document.createElement('link');
+  link.rel = 'manifest'; link.href = manifestURL;
+  document.head.appendChild(link);
+
+  const swCode = `
+    self.addEventListener('install', e => self.skipWaiting());
+    self.addEventListener('activate', e => self.clients.claim());
+    self.addEventListener('fetch', e => {
+      e.respondWith(fetch(e.request).catch(()=> new Response('Offline', {status:503})));
+    });
+  `;
+  const swBlob = new Blob([swCode], {type:'application/javascript'});
+  const swURL = URL.createObjectURL(swBlob);
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register(swURL).catch(()=>{ /* abaikan di lingkungan sandbox */ });
+  }
+
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('installBtn').classList.remove('hidden');
+  });
+  document.getElementById('installBtn').addEventListener('click', async ()=>{
+    if(!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('installBtn').classList.add('hidden');
+  });
+})();
+
+/* =====================================================================
+   16. INIT
+   ===================================================================== */
+document.getElementById('modeLabel').textContent = IS_PREVIEW ? 'Mode Preview (data simulasi)' : 'Mode Production';
+loadPublicData();
+</script>
 </body>
 </html>
